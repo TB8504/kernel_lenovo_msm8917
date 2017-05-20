@@ -891,12 +891,14 @@ static long msm_isp_ioctl_unlocked(struct v4l2_subdev *sd,
 		mutex_unlock(&vfe_dev->buf_mgr->lock);
 		mutex_unlock(&vfe_dev->core_mutex);
 		break;
+#if !defined(CONFIG_MACH_LENOVO_TB8703)
 	case VIDIOC_MSM_ISP_CFG_HW_STATE:
 		mutex_lock(&vfe_dev->core_mutex);
 		rc = msm_isp_update_stream_bandwidth(vfe_dev,
 			*(enum msm_vfe_hw_state *)arg);
 		mutex_unlock(&vfe_dev->core_mutex);
 		break;
+#endif
 	case VIDIOC_MSM_ISP_AXI_HALT:
 		mutex_lock(&vfe_dev->core_mutex);
 		rc = msm_isp_axi_halt(vfe_dev, arg);
