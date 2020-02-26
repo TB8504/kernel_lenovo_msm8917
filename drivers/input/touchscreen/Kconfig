@@ -143,6 +143,18 @@ config TOUCHSCREEN_AUO_PIXCIR
 	  To compile this driver as a module, choose M here: the
 	  module will be called auo-pixcir-ts.
 
+source "drivers/input/touchscreen/hxchipset/Kconfig"
+config TOUCHSCREEN_HIMAX_CHIPSET
+	bool "Himax touchpanel CHIPSET"
+	depends on I2C
+	help
+	  Say Y here if you have a Himax CHIPSET touchscreen.
+	  HIMAX controllers are multi touch controllers which can
+	  report 10 touches at a time.
+
+          If unsure, say N.
+
+
 source "drivers/input/touchscreen/elan/Kconfig"
 config TOUCHSCREEN_ELAN
 	tristate "Elan i2c touchscreen"
