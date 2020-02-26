@@ -27,7 +27,9 @@
 #include <linux/bitops.h>
 #include <linux/types.h>
 #include <linux/delay.h>
-
+#ifdef CONFIG_MACH_LENOVO_TB8504
+extern int compare_lcd_id;
+#endif
 struct tps65132_regulator {
 	struct regulator_init_data	*init_data;
 	struct regulator_dev		*rdev;
@@ -98,10 +100,18 @@ static struct of_regulator_match tps65132_reg_matches[] = {
 	{ .name = "neg-boost", .driver_data = (void *)TPS65132_NEGATIVE_BOOST },
 };
 
+#ifdef CONFIG_MACH_LENOVO_TB8504
+int is_auo_lcm(void);
+int is_inx_lcm(void);
+bool ocp_flag = true;
+#endif
+
 static int tps65132_regulator_disable(struct regulator_dev *rdev)
 {
 	struct tps65132_regulator *vreg = rdev_get_drvdata(rdev);
 	struct tps65132_chip *chip = vreg->chip;
+
+
 
 	if (chip->en_gpio_lpm)
 		gpio_direction_input(vreg->en_gpio);
@@ -109,8 +119,32 @@ static int tps65132_regulator_disable(struct regulator_dev *rdev)
 		gpio_set_value_cansleep(vreg->en_gpio,
 			vreg->gpio_flags & OF_GPIO_ACTIVE_LOW ? 1 : 0);
 
+#ifdef CONFIG_MACH_LENOVO_TB8504
+	if (is_auo_lcm()) {
+		/* ensure the timing of AVDD and AVEE is correct
+		* when LCD is going to sleep.
+		*/  
+		if (vreg->en_gpio == 44) {
+			/* do nothing if it's gpio pin for enabling AVDD */
+		}
+		else if (vreg->en_gpio == 45) {
+			/* do delay if it's gpio pin for enabling AVEE */
+			mdelay(10);
+		}
+	}
+	else if (is_inx_lcm()){
+		mdelay(10);
+	}
+	else if (compare_lcd_id ==3) {
+		if (vreg->en_gpio == 44) {
+			/* do delay if it's gpio pin for enabling AVEE */
+			mdelay(2);
+		}
+	}
+#endif
+
 	vreg->is_enabled = false;
-    mdelay(10);
+
 	return 0;
 }
 
@@ -120,15 +154,37 @@ static int tps65132_regulator_enable(struct regulator_dev *rdev)
 	struct tps65132_chip *chip = vreg->chip;
 	int rc;
 
+#ifdef CONFIG_MACH_LENOVO_TB8504
+	if (is_auo_lcm()) {
+		gpio_direction_output(0,1);
+		/* ensure the timing of T2 btw VCC and AVDD is correct
+		in the range of 0.5ms to 1.0ms as AUO LCD datasheet */
+		udelay(350);
+
+	}
+#endif
+
 	if (chip->en_gpio_lpm)
+		{
 		gpio_direction_output(vreg->en_gpio,
 			vreg->gpio_flags & OF_GPIO_ACTIVE_LOW ? 0 : 1);
+#ifdef CONFIG_MACH_LENOVO_TB8504
+		if(vreg->en_gpio == 44)
+			{
+				mdelay(2);
+			}
+#endif
+		}
 	else
+		{
 		gpio_set_value_cansleep(vreg->en_gpio,
 			vreg->gpio_flags & OF_GPIO_ACTIVE_LOW ? 0 : 1);
+
+		}
 	vreg->is_enabled = true;
 
 	if (chip->apps_dischg_cfg_postpone) {
+
 		rc = regmap_write(chip->regmap, chip->apps_dischg_reg,
 						chip->apps_dischg_val);
 		if (rc) {
@@ -138,6 +194,46 @@ static int tps65132_regulator_enable(struct regulator_dev *rdev)
 		chip->apps_dischg_cfg_postpone = false;
 	}
 
+#ifdef CONFIG_MACH_LENOVO_TB8504
+	if(((compare_lcd_id == 3)||(compare_lcd_id == 2))&&(ocp_flag)){
+	rc = regmap_write(rdev->regmap, TPS65132_REG_VPOS,0x14);
+	if (rc) {
+			printk("andy set voltage failed, rc = %d\n", rc);
+			return rc;
+		}
+	rc = regmap_write(rdev->regmap, TPS65132_REG_VNEG,0x14);
+	printk("andy.%s line:%d vreg->vol_reg = %x vreg->vol_set_val = %d\n",__func__,__LINE__,vreg->vol_reg,vreg->vol_set_val);
+		if (rc) {
+			printk("andy set voltage failed, rc = %d\n", rc);
+			return rc;
+		}
+	rc = regmap_write(rdev->regmap, TPS65132_REG_CTRL,0X80);
+		if (rc) {
+			printk("andy set voltage failed, rc = %d\n", rc);
+			return rc;
+		}
+	ocp_flag=false;
+
+	}else if((compare_lcd_id == 1)&&(ocp_flag)){
+	rc = regmap_write(rdev->regmap, TPS65132_REG_VPOS,0x0f);
+	if (rc) {
+			printk("andy set voltage failed, rc = %d\n", rc);
+			return rc;
+		}
+	rc = regmap_write(rdev->regmap, TPS65132_REG_VNEG,0x0f);
+	printk("andy.%s line:%d vreg->vol_reg = %x vreg->vol_set_val = %d\n",__func__,__LINE__,vreg->vol_reg,vreg->vol_set_val);
+		if (rc) {
+			printk("andy set voltage failed, rc = %d\n", rc);
+			return rc;
+		}
+	rc = regmap_write(rdev->regmap, TPS65132_REG_CTRL,0X80);
+		if (rc) {
+			printk("andy set voltage failed, rc = %d\n", rc);
+			return rc;
+		}
+	ocp_flag=false;
+	}
+#endif
 	if (vreg->vol_set_postpone) {
 		rc = regmap_write(rdev->regmap, vreg->vol_reg,
 					vreg->vol_set_val);
