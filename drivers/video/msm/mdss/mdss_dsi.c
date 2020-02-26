@@ -53,6 +53,9 @@ static int lcd_power_en,lcd_level_shift;
 #endif
 #ifdef CONFIG_MACH_LENOVO_TB8504
 extern int elan_flag;	//lct--lyh--add for tp firmware update
+extern int compare_tp_id;
+extern void himax_int_enable(int irqnum, int enable);
+extern int tp_irq;
 #endif
 
 static struct pm_qos_request mdss_dsi_pm_qos_request;
@@ -300,6 +303,10 @@ static int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
+#ifdef CONFIG_MACH_LENOVO_TB8504
+	mdelay(80);
+#endif
+
 	ret = mdss_dsi_panel_reset(pdata, 0);
 #ifdef CONFIG_MACH_LENOVO_TB8504
 	mdelay(10);
@@ -425,6 +432,9 @@ static int mdss_dsi_panel_power_lp(struct mdss_panel_data *pdata, int enable)
 	return 0;
 }
 
+#ifdef CONFIG_MACH_LENOVO_TB8504
+int is_auo_lcm(void);
+#endif
 static int mdss_dsi_panel_power_ulp(struct mdss_panel_data *pdata,
 					int enable)
 {
@@ -498,9 +508,15 @@ int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 	}
 #ifdef CONFIG_MACH_LENOVO_TB8504
 	if(power_state==1){
-		gpio_direction_output(0,1);
-		mdelay(3);
-		gpio_direction_output(47,1);
+		if (is_auo_lcm()) {
+			gpio_direction_output(47,1);
+		}
+		else {
+			mdelay(50);
+			gpio_direction_output(0,1);
+			mdelay(3);
+			gpio_direction_output(47,1);
+		}
 	}
 #endif
 
@@ -564,21 +580,26 @@ int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 #ifdef CONFIG_MACH_LENOVO_TB8504
 	if(power_state == 0)
 	{
+		if(compare_tp_id == 2)
+		{
+                	himax_int_enable(tp_irq, 0);
+		}
 		if(elan_flag == 1)
 		{
-			gpio_direction_output(0,1);
-		mdelay(1);
-		gpio_direction_output(47,1);
+	 		gpio_direction_output(0,1);
+        	mdelay(1);
+    		gpio_direction_output(47,1);
 		}
 		else
 		{
 			gpio_direction_output(47,0);
-			mdelay(3);
+			mdelay(6);
 			gpio_direction_output(0,0);
+			mdelay(50);
+
 		}
 	}
-#endif
-
+#endif	
 	if (!ret)
 		pinfo->panel_power_state = power_state;
 end:
