@@ -37,7 +37,7 @@
 static struct workqueue_struct *init_elan_ic_wq = NULL;
 static struct delayed_work init_work;
 static unsigned long delay = 2*HZ;
-extern int compare_tp_id;
+extern int compare_lcd_id;
 
 //#define ELAN_ESD_CHECK
 #ifdef ELAN_ESD_CHECK
@@ -400,34 +400,6 @@ static int __fw_packet_handler(struct i2c_client *client)
 }
 
 
-//lct--lyh--add tp info start
-static char dev_info[100];
-
-static void lct_tp_info(char *module)
-{
-    char info[50] = {0};
-    static bool initialized = false;
-    if(module && initialized)
-	return;
-
-   snprintf(info, sizeof(info), "[fw]0x%4.4x,[ic]EKTH3668", private_ts->fw_ver); 
-   snprintf(dev_info, sizeof(dev_info), "[Vendor]%s,[fw]0x%4.4x,[ic]EKTH3668", module, private_ts->fw_ver);
-   if(!module)
-	update_tp_fm_info(info);
-   else {
-	init_tp_fm_info(0, info, module);
-        initialized = true;
-   }
-	
-}
-
-static void lct_get_tp_info(char *tp_info)
-{
-	if(tp_info == NULL)
-		return;
-	sprintf(tp_info,"%s", dev_info);
-}
-//lct--lyh--add tp info end
 static int elan_ts_rough_calibrate(struct i2c_client *client)
 {
     uint8_t flash_key[] = {CMD_W_PKT, 0xc0, 0xe1, 0x5a};
@@ -625,7 +597,6 @@ IAP_RESTART:
     if(res!=sizeof(data)){
         elan_info(" dummy error code = %d\n",res);
 	elan_flag = 0;		//lct--lyh--add for tp firmware update
-	lct_set_ctp_upgrade_status("Upgrade failed!");
         return res;
     }
     else{
@@ -671,7 +642,6 @@ PAGE_REWRITE:
                 elan_switch_irq(1);
                 ts->power_lock = 0;
 		elan_flag = 0;		//lct--lyh--add for tp firmware update
-		lct_set_ctp_upgrade_status("Upgrade failed!");
                 return -1;
             }
             else{
@@ -693,27 +663,11 @@ PAGE_REWRITE:
     
     elan_flag = 0;	//lct--lyh--add for tp firmware update
     elan_info("Update ALL Firmware successfully!\n");
-    lct_set_ctp_upgrade_status("Upgrade success!");
+
     
     return 0;
 }
 
-
-//lct--lyh--add for factory upgrade firmware start 
-static int lct_ctp_upgrade_func(void)
-{
-/*
-	int ret;
-	ret = update_fw_one(private_ts->client);
-	if(ret)
-	{
-		printk("[lct_ctp] Upgrate failed!");
-	}
-	return ret;
-*/
-	return 0;
-}
-//lct--lyh--add for factory upgrade firmware end
 
 static inline int elan_ts_parse_xy(uint8_t *data, uint16_t *x, uint16_t *y)
 {
@@ -1529,12 +1483,7 @@ static void elan_ic_init_work(struct work_struct *work)
         }   
         elan_switch_irq(1);
     }
-//lct--lyh--add tp info
-    lct_tp_info("ELAN");
 
-//lct--lyh--add for factory compare
-    lct_ctp_upgrade_int(lct_ctp_upgrade_func, lct_get_tp_info);
-    
 #if defined IAP_PORTION 
     check_update_flage(private_ts);
 #endif
@@ -1938,9 +1887,9 @@ static int __init elan_ts_init(void)
 {
     int ret = -1;
 
-    if(compare_tp_id != 1)
+    if(compare_lcd_id != 1)
     {
-	elan_info("%s failed, compare_tp_id = %d\n", __func__, compare_tp_id);
+	elan_info("elan %s failed, compare_lcd_id = %d\n", __func__, compare_lcd_id);
 	return ret;
     }
     elan_info("%s driver 004 version : auto-mapping resolution\n", __func__);   

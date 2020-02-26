@@ -64,7 +64,7 @@
 
 /***********************debug info macro switch***********************/
 //#define PRINT_INT_INFO
-#define PRINT_INT_INFO1 
+//#define PRINT_INT_INFO1 
 
 #ifdef PRINT_INT_INFO1 
 	static bool debug_flage = true;
@@ -148,7 +148,7 @@ static const int key_value[] = {KEY_MENU, KEY_HOME, KEY_BACK};
 #if defined IAP_PORTION || defined ELAN_RAM_XX
 	/*The newest firmware, if update must be changed here*/
 	static uint8_t file_fw_data[] = {
-		#include "fw_data_5517.i"
+		#include "fw_data_5518.i"
 	};
 
 	enum
