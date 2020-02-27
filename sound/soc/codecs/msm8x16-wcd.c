@@ -75,8 +75,9 @@
 #define MCLK_RATE_12P288MHZ	12288000
 
 #define BUS_DOWN 1
-
-
+#if defined(CONFIG_MACH_LENOVO_TB8504)
+int receiver_status_on =0;
+#endif
 /*
  *50 Milliseconds sufficient for DSP bring up in the modem
  * after Sub System Restart
@@ -99,8 +100,13 @@ enum {
 #define EAR_PMU 1
 #define SPK_PMD 2
 #define SPK_PMU 3
-
+/* lc mike_zhu  modify for headset micbias voltage  20190102  start  */
+#ifdef CONFIG_MACH_LENOVO_TB8504
+#define MICBIAS_DEFAULT_VAL 2700000
+#else
 #define MICBIAS_DEFAULT_VAL 1800000
+#endif
+/* lc mike_zhu  modify for headset micbias voltage  20190102  end  */
 #define MICBIAS_MIN_VAL 1600000
 #define MICBIAS_STEP_SIZE 50000
 
@@ -2350,7 +2356,13 @@ static int set_external_rec_pa(struct snd_kcontrol *kcontrol,
 	if (external_rec_control == ucontrol->value.integer.value[0])
 		return 0;
 	external_rec_control = ucontrol->value.integer.value[0];
+#if defined(CONFIG_MACH_LENOVO_TB8504)
+	mutex_lock(&pdata->receiver_pa_mutex);
 	msm8x16_rec_ext_pa_ctrl(pdata, external_rec_control);
+	mutex_unlock(&pdata->receiver_pa_mutex);
+#else
+	msm8x16_rec_ext_pa_ctrl(pdata, external_rec_control);
+#endif
 	return 1;
 }
 #endif
@@ -3339,35 +3351,57 @@ static const struct snd_kcontrol_new lo_mux[] = {
 	{
 		if (on_off)
 		{
-			//Use mode 5 for receiver.
+			pr_debug("%s, spk----receiver_status_on:%d \n", __func__,receiver_status_on);
+			if(receiver_status_on==0)
+			{
+			//Use mode 5 for receiver.   
+			//gpio_direction_output(pdata->spk_ext_pa_l_gpio, 0);
+			//mutex_lock(&pdata->receiver_pa_mutex);
+			receiver_status_on=1;
 			gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, false);
-			mdelay(1);
+            		///mdelay(5);
+			pr_debug("%s, spk----set gpio----on------- \n", __func__);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, true);
-			udelay(2);
+			//udelay(1);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, false);
-			udelay(2);
+			//udelay(1);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, true);
-			udelay(2);
+			//udelay(1);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, false);
-			udelay(2);
+			//udelay(1);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, true);
-			udelay(2);
+			//udelay(1);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, false);
-			udelay(2);
+			//udelay(1);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, true);
-			udelay(2);
+			//udelay(1);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, false);
-			udelay(2);
+			//udelay(1);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, true);
-			msleep(50);
+			//mutex_unlock(&pdata->receiver_pa_mutex);
+			pr_debug("%s, spk----AW87317  receiver mode 5  on ------1-------\n", __func__);
+			mdelay(5);///attack time 40ms
+			}
+			///pr_debug("%s, spk----AW87317  receiver mode 5  on  ------2-------receiver_status_on:%d \n", __func__,receiver_status_on);
 		}
 		else {
+			//gpio_direction_output(pdata->spk_ext_pa_l_gpio, 1);
+			//mutex_lock(&pdata->receiver_pa_mutex);
+			receiver_status_on=0;
 			gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, false);
+			//msleep(1);
+			//gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, false);
+			//msleep(1);
+			///gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, false);
+			pr_debug("%s, spk----AW87317  receiver mode 5  off \n", __func__);
+			//mdelay(5);/// release time 1.2s
+		//	mutex_unlock(&pdata->receiver_pa_mutex);
+			//	msleep(1200);/// release time 1.2s
 		}
 	}
 	else
 	{
-		pr_debug("%s, error\n", __func__);
+		pr_debug("%s, spk error\n", __func__);
 		ret = -EINVAL;
 	}
 
@@ -5318,7 +5352,7 @@ static int msm8x16_wcd_codec_enable_ear_pa(struct snd_soc_dapm_widget *w,
 			MSM8X16_WCD_A_CDC_RX1_B6_CTL, 0x01, 0x00);
         #if defined(CONFIG_RECEIVER_EXT_PA)
 		pr_debug("At %d In (%s), will run msm8x16_rec_ext_pa_ctrl,true\n",__LINE__, __FUNCTION__);
-		schedule_delayed_work(&pdata->rec_gpio_work, msecs_to_jiffies(40));//50
+		schedule_delayed_work(&pdata->rec_gpio_work, msecs_to_jiffies(50));//50
         #endif
 		break;
 	case SND_SOC_DAPM_PRE_PMD:

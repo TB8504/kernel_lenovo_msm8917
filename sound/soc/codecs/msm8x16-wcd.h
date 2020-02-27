@@ -235,6 +235,7 @@ struct msm8916_asoc_mach_data {
 #if defined(CONFIG_MACH_LENOVO_TB8504)
 	struct mutex speaker_pa_mutex;
 	struct delayed_work speaker_pa_enable_work;
+	struct mutex receiver_pa_mutex;
 	unsigned char spk_is_on;
 #endif
 

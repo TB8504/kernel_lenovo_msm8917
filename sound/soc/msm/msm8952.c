@@ -443,34 +443,23 @@ int msm8x16_spk_ext_pa_ctrl(struct msm8916_asoc_mach_data *pdatadata, bool value
 			udelay(2);
 #elif defined(CONFIG_MACH_LENOVO_TB8504)
 			//Use AW87317 mode 3 for 3588
+			//<---->gpio_direction_output(pdata->spk_ext_pa_l_gpio, 0);<--->
+			//<---->mutex_lock(&pdata->speaker_pa_mutex);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, false);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_r_gpio, false);
 			mdelay(1);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, true);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_r_gpio, true);
-			udelay(2);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, false);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_r_gpio, false);
-			udelay(2);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, true);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_r_gpio, true);
-			udelay(2);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, false);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_r_gpio, false);
-			udelay(2);
-#else
-#if defined(CONFIG_SPEAKER_EXT_PA_AW8738) //Use mode 2 for project P3585
-			pr_debug("At %d In (%s),set pa\n",__LINE__, __FUNCTION__);
-			gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, false);
-			gpio_set_value_cansleep(pdata->spk_ext_pa_r_gpio, false);
-			mdelay(1);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, true);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_r_gpio, true);
-			udelay(2);
-			gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, false);
-			gpio_set_value_cansleep(pdata->spk_ext_pa_r_gpio, false);
-			udelay(2);
-#endif
+			msleep(40);
+			//<---->mutex_unlock(&pdata->speaker_pa_mutex);
 #endif
 			gpio_set_value_cansleep(pdata->spk_ext_pa_l_gpio, true);
 			gpio_set_value_cansleep(pdata->spk_ext_pa_r_gpio, true);
@@ -3236,12 +3225,18 @@ static void msm8x16_rec_ext_pa_delayed(struct work_struct *work)
 	if(pdata->rec_is_on == 0)
 	{
 	pr_debug("At %d In (%s),open rec\n",__LINE__, __FUNCTION__);
+#if defined(CONFIG_MACH_LENOVO_TB8504) //mike_zhu add  20170111 for spk pop
+
+	mutex_lock(&pdata->receiver_pa_mutex);
 	msm8x16_rec_ext_pa_ctrl(pdata, true);
+	mutex_unlock(&pdata->receiver_pa_mutex);
+#else
+msm8x16_rec_ext_pa_ctrl(pdata, true);
+#endif
 	pdata->rec_is_on = 2;
 	}
 }
 #endif
-
 #if defined(CONFIG_MACH_LENOVO_TB8504) //mike_zhu add  20170111 for spk pop
 static void msm8x16_spk_ext_pa_delayed(struct work_struct *work)
 {
@@ -3313,12 +3308,12 @@ static void msm8952_dt_parse_cap_info(struct platform_device *pdev,
 		 MICBIAS_EXT_BYP_CAP : MICBIAS_NO_EXT_BYP_CAP);
 }
 
-
 #if defined(CONFIG_SPEAKER_EXT_PA) //xuke @ 20141112 Support external PA for speaker.
 static int msm8x16_setup_spk_ext_pa(struct platform_device *pdev, struct msm8916_asoc_mach_data *pdata)
 {
 #if defined(CONFIG_MACH_LENOVO_TB8504)
 	int ret;
+	int retry=0;
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *spkl_ext_pa_sus;
 	struct pinctrl_state *spkr_ext_pa_sus;
@@ -3327,6 +3322,42 @@ static int msm8x16_setup_spk_ext_pa(struct platform_device *pdev, struct msm8916
 	if (IS_ERR(pinctrl)) {
 		pr_err("%s: Unable to get pinctrl handle\n", __func__);
 	}
+		pdata->us_euro_gpio = of_get_named_gpio(pdev->dev.of_node,
+					"qcom,cdc-us-euro-gpios", 0);
+	if (pdata->us_euro_gpio < 0) {
+		pr_debug("%s, us_euro_gpio not exist!\n", __func__);
+	} else {
+		pr_debug("%s, us_euro_gpio=%d  \n",
+			__func__, pdata->us_euro_gpio);
+		if (!gpio_is_valid(pdata->us_euro_gpio))
+		{
+			pr_err("%s: Invalid us_euro_gpio  : %d",
+				__func__, pdata->us_euro_gpio);
+		} else {
+
+		if (gpio_request(pdata->us_euro_gpio, "us_euro_gpio")){
+		pr_err("us_euro_gpio request failed\n");
+		do {
+		gpio_free(pdata->us_euro_gpio);
+		if (gpio_request(pdata->us_euro_gpio, "us_euro_gpio")){
+		pr_err("us_euro_gpio request ----again----failed     retry=%d\n",retry);
+		}
+		else
+		{
+		break;
+		}
+		retry++;
+		} while (retry < 3);
+		}			
+		if (gpio_direction_output(pdata->us_euro_gpio, 0)) {
+		pr_err("set_direction for us_euro_gpio failed\n");
+		}
+		}
+
+	}
+	
+	///gpio_set_value_cansleep(pdata->us_euro_gpio, 1);
+	//gpio_set_value_cansleep(48, true);
 
 	//for left speaker
 	spkl_ext_pa_sus = pinctrl_lookup_state(pinctrl, "spkl_ext_pa_sus");
@@ -3944,6 +3975,7 @@ parse_mclk_freq:
 	INIT_DELAYED_WORK(&pdata->rec_gpio_work, msm8x16_rec_ext_pa_delayed);
 #endif
 #if defined(CONFIG_MACH_LENOVO_TB8504) //mike_zhu add  20170111 for spk pop
+	mutex_init(&pdata->receiver_pa_mutex);
 	INIT_DELAYED_WORK(&pdata->speaker_pa_enable_work, msm8x16_spk_ext_pa_delayed);
 	mutex_init(&pdata->speaker_pa_mutex);
 #endif
