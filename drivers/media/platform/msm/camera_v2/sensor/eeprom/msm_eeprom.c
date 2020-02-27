@@ -59,8 +59,10 @@ static int msm_get_read_mem_size
 			return -EINVAL;
 		}
 		for (i = 0; i < eeprom_map->memory_map_size; i++) {
-			if (eeprom_map->mem_settings[i].i2c_operation ==
-				MSM_CAM_READ) {
+			if ((eeprom_map->mem_settings[i].i2c_operation ==
+				MSM_CAM_READ) ||
+			   (eeprom_map->mem_settings[i].i2c_operation ==  /*add for gc5025 & gc5025a*/
+				MSM_CAM_READ_GC5025A)) {
 				size += eeprom_map->mem_settings[i].reg_data;
 			}
 		}
@@ -140,6 +142,222 @@ static uint32_t msm_eeprom_match_crc(struct msm_eeprom_memory_block_t *data)
 	return ret;
 }
 
+#if defined (CONFIG_MACH_LENOVO_TB8504)
+//add gc5025a otp
+static int gc5025a_otp_readmode_initial(struct msm_eeprom_ctrl_t *e_ctrl,struct msm_eeprom_memory_block_t *block,uint8_t *memptr)
+{
+	int rc = 0;
+//	int i;
+	int gc;
+	uint16_t gc_read;
+	CDBG("\r\n tom han gc5025a memptr = 0x%p\n", memptr);
+	if(block->mapdata == NULL)
+	CDBG("\r\n tom han gc5025a %s block->mapdata == NULL\n", __func__);	
+	CDBG("\r\n tom han gc5025a %s enter\n", __func__);
+//	e_ctrl->i2c_client.addr_type = MSM_CAMERA_I2C_WORD_ADDR;
+	e_ctrl->i2c_client.addr_type = 1;
+	if (e_ctrl->i2c_client.cci_client) {
+			e_ctrl->i2c_client.cci_client->sid =
+				0x6e >> 1;
+		CDBG("tom han gc5025a e_ctrl->i2c_client.cci_client->sid = 0x%x\n", e_ctrl->i2c_client.cci_client->sid );	
+		
+	} else if(e_ctrl->i2c_client.client) {
+			e_ctrl->i2c_client.client->addr =
+				0x6e >> 1;
+		CDBG("tom han gc5025a e_ctrl->i2c_client.client->addr = 0x%x\n", e_ctrl->i2c_client.client->addr );
+	}
+	msleep(10);
+/*		rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write_table(&(e_ctrl->i2c_client), &gc5025a_otp_read_init_setting_start);
+		CDBG("\r\n tom han gc5025a: rc1 = %d\n",rc );
+	if (rc < 0) {
+		CDBG("\r\n tom han gc5025a <3>""%s: otp read mode initial setting failed\n", __func__);
+		return rc;
+	}*/
+		CDBG("\r\n tom han gc5025a %s:%d:num_data=%d\n", __func__, __LINE__,block->num_data);
+	
+		rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client), 0xf7, 0x01,1);
+		if (rc < 0) {
+				pr_err("%s:tom han gc5025a read 0xf7 read failed\n",__func__);
+				goto clean_up;
+			}
+		
+		rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client), 0xf8, 0x11,1);
+		if (rc < 0) {
+				pr_err("%s:tom han gc5025a read 0xf8 read failed\n",__func__);
+				goto clean_up;
+			}
+
+
+		rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client), 0xf9, 0x00,1);
+		if (rc < 0) {
+				pr_err("%s:tom han gc5025a read 0xf9 read failed\n",__func__);
+				goto clean_up;
+			}
+	
+		rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client), 0xfc, 0x2e,1);
+		if (rc < 0) {
+				pr_err("%s:tom han gc5025a read 0xfc read failed\n",__func__);
+				goto clean_up;
+			}
+
+		rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client), 0xfa, 0xb0,1);
+		if (rc < 0) {
+				pr_err("%s:tom han gc5025a read 0xfa read failed\n",__func__);
+				goto clean_up;
+			}
+
+		rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client), 0xd4, 0x80,1);
+		if (rc < 0) {
+				pr_err("%s:tom han gc5025a read 0xd4 read failed\n",__func__);
+				goto clean_up;
+			}
+		e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client), 0xd5, 0x00,1);
+		if (rc < 0) {
+				pr_err("%s:tom han gc5025a read 0xd5 read failed\n",__func__);
+				goto clean_up;
+			}
+		e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client), 0xf3, 0x20,1);
+		if (rc < 0) {
+				pr_err("%s:tom han gc5025a read 0xf30 read failed\n",__func__);
+				goto clean_up;
+			}
+		e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client), 0xf3, 0x88,1);
+		if (rc < 0) {
+				pr_err("%s:tom han gc5025a read 0xf31 read failed\n",__func__);
+				goto clean_up;
+			}			
+		msleep(1);
+					
+		for(gc = 0; gc < 128; gc++) {
+			msleep(1);
+			rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_read(&(e_ctrl->i2c_client), 0xd7, &gc_read,1);
+			if (rc < 0) {
+				pr_err("%s:tom han read 0xd7 read failed\n",__func__);
+				goto clean_up;
+			}
+			*memptr = (uint8_t)gc_read;
+			if(*memptr !=0)
+			pr_err("\r\n tom han read gc5025a otp page0 [%2x]=%2x\n", gc, *memptr);
+			memptr++;	
+		}
+	
+		e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client), 0xd4, 0x84,1);
+		e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client), 0xd5, 0x00,1);
+		e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client), 0xf3, 0x20,1);
+		e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client), 0xf3, 0x88,1);
+					
+		msleep(1);
+					
+		for(gc = 0; gc < 128; gc++) {
+			msleep(1);
+			rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_read(&(e_ctrl->i2c_client), 0xd7, &gc_read,1);
+			if (rc < 0) {
+				pr_err("%s: read failed\n",__func__);
+				goto clean_up;
+			}
+			*memptr = (uint8_t)gc_read;
+			if(*memptr !=0)
+			pr_err("\r\n tom han read gc5025a otp page1 [%2x]=%2x\n", gc, *memptr);
+			memptr++;	
+		}
+/*		for(gc = 0; gc < 0x80; gc++) {
+			msleep(1);
+			rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_read(&(e_ctrl->i2c_client), 0xd7, &gc_read,1);
+			if (rc < 0) {
+				pr_err("%s: read failed\n",__func__);
+				goto clean_up;
+			}
+			*memptr = (uint8_t)gc_read;
+			if(*memptr !=0)
+			pr_err("\r\n tom han read gc5025a otp page1 [%2x]=%2x\n", gc, *memptr);
+			memptr++;	
+		}*/
+	CDBG("\r\n gc5025a %s read success\n", __func__);
+	return 0x5025;
+
+clean_up:
+	kfree(e_ctrl->cal_data.mapdata);
+	e_ctrl->cal_data.num_data = 0;
+	e_ctrl->cal_data.mapdata = NULL;
+	return rc;
+}
+#endif
+
+#if defined (CONFIG_MACH_LENOVO_TB8504)
+/**
+  * hynix_sensor_init_for_otp - Hynix sensor read OTP data need init sensor earlyer
+  * sensor_name:            hi556       hi846
+  * sensor_id_reg_addr:   0x0F16     0x0F16
+  * sensor_id:                 0x0556     0x4608
+  */
+static int hynix_otp_readmode_initial(struct msm_eeprom_ctrl_t *e_ctrl,struct msm_eeprom_memory_block_t *block)
+{
+	int rc = 0;
+	uint32_t snsid_addr = 0x0f16;
+	uint16_t sensor_id;
+	int i;
+	uint8_t *memptr = block->mapdata;
+	CDBG("\r\n cjhi556 memptr = 0x%p\n", memptr);
+	if(block->mapdata == NULL)
+	CDBG("\r\n cjhi556 %s block->mapdata == NULL\n", __func__);	
+	CDBG("\r\n cjhi556 %s enter\n", __func__);
+	e_ctrl->i2c_client.addr_type = MSM_CAMERA_I2C_WORD_ADDR;
+	if (e_ctrl->i2c_client.cci_client) {
+			e_ctrl->i2c_client.cci_client->sid =
+				0x50 >> 1;
+		CDBG("tom han e_ctrl->i2c_client.cci_client->sid = 0x%x\n", e_ctrl->i2c_client.cci_client->sid );	
+		
+	} else if (e_ctrl->i2c_client.client) {
+			e_ctrl->i2c_client.client->addr =
+				0x50 >> 1;
+		CDBG("tom han e_ctrl->i2c_client.client->addr = 0x%x\n", e_ctrl->i2c_client.client->addr );
+	}
+
+	rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_read(&(e_ctrl->i2c_client),
+			snsid_addr, &sensor_id, 2);
+	if (rc < 0) {
+		CDBG("\r\n cjhi556 <3>""%s: otp sensor id read failed\n", __func__);
+		return rc;
+	}
+	else{
+		CDBG(" %s:tom han sensor id read sensor id success\n", __func__);
+	}
+	msleep(20);
+	CDBG("\r\n cjhi556 %s: sensor_id = 0x%x \n", __func__, sensor_id);
+	if (sensor_id == 0x0556) {
+		CDBG("\r\n cjhi556%s:%d hi556 sensor otp", __func__, __LINE__);
+		rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write_table(&(e_ctrl->i2c_client), &hi556_otp_read_init_setting);
+		CDBG("\r\n cjhi556: rc1 = %d\n",rc );
+		rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write_table(&(e_ctrl->i2c_client), &hi556_otp_read_init_setting_start);
+		CDBG("\r\n cjhi556: rc2 = %d\n",rc );
+	}
+	else {
+		CDBG("\r\n cjhi556 %s:%d other sensor otp", __func__, __LINE__);
+		return -1;
+	}
+	if (rc < 0) {
+		CDBG("\r\n cjhi556 <3>""%s: otp read mode initial setting failed\n", __func__);
+		return rc;
+	}
+		CDBG("\r\n tom han %s:%d:num_data=%d\n", __func__, __LINE__,block->num_data);
+	for(i = 0; i< block->num_data; i++){
+		rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_read_seq(&(e_ctrl->i2c_client),0x108, memptr, 1);
+		if((i == 0) || (i == 0x34) || (i == 0X8F) || (i == 0XBF)){
+		CDBG("\r\n cjhi556 [%2x]=%2x\n", i, *memptr);}
+		if(rc < 0){
+			CDBG("tom han rc1 =%d\n", rc);
+			return rc;		
+		}
+		memptr++;
+	}
+	CDBG("\r\n cjhi556 %s read success\n", __func__);
+	return 0x556;
+}
+#endif
+
+
+
+
 /**
   * read_eeprom_memory() - read map data into buffer
   * @e_ctrl:	eeprom control struct
@@ -163,7 +381,17 @@ static int read_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl,
 	}
 
 	eb_info = e_ctrl->eboard_info;
-
+#if defined (CONFIG_MACH_LENOVO_TB8504)
+	CDBG("tom han block->num_map = %d\n",block->num_map);
+	if (block->num_map == 2){
+		rc = hynix_otp_readmode_initial(e_ctrl, &e_ctrl->cal_data);
+		if (rc  == 0x556){
+		rc = 0;
+		CDBG("tom han initial success");
+		goto success;
+		}
+	}
+#endif
 	for (j = 0; j < block->num_map; j++) {
 		if (emap[j].saddr.addr) {
 			eb_info->i2c_slaveaddr = emap[j].saddr.addr;
@@ -240,10 +468,34 @@ static int read_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl,
 				pr_err("%s: page disable failed\n", __func__);
 				return rc;
 			}
+#if defined (CONFIG_MACH_LENOVO_TB8504)
 		}
 	}
+		CDBG("tom han read_otp_page return rc = %d\n", rc);
+
+	if(block->num_map == 1){
+//		CDBG("tom han gc5025a = %d\n",memptr);
+		rc = gc5025a_otp_readmode_initial(e_ctrl, &e_ctrl->cal_data,memptr);
+		if (rc  != 0x5025){
+			rc = 0;
+			CDBG("tom han gc5025a return rc = %d\n",rc);
+#endif
+		}
+#if defined (CONFIG_MACH_LENOVO_TB8504)
+//		CDBG("tom han gc5025a = %d\n",memptr);
+		return rc;
+#endif
+	}
+
 	return rc;
+#if defined (CONFIG_MACH_LENOVO_TB8504)
+	success:
+	CDBG("%s:%d tom han read_otp success\n", __func__, __LINE__);
+	return rc;
+#endif
 }
+
+
 /**
   * msm_eeprom_parse_memory_map() - parse memory map in device node
   * @of:	device node
@@ -260,6 +512,9 @@ static int msm_eeprom_parse_memory_map(struct device_node *of,
 	char property[PROPERTY_MAXSIZE];
 	uint32_t count = 6;
 	struct msm_eeprom_memory_map_t *map;
+#if defined (CONFIG_MACH_LENOVO_TB8504)
+	int add_size = 256;
+#endif
 
 	snprintf(property, PROPERTY_MAXSIZE, "qcom,num-blocks");
 	rc = of_property_read_u32(of, property, &data->num_map);
@@ -316,7 +571,11 @@ static int msm_eeprom_parse_memory_map(struct device_node *of,
 		}
 		data->num_data += map[i].mem.valid_size;
 	}
-
+#if defined (CONFIG_MACH_LENOVO_TB8504)
+	if(data->num_map == 1){
+		data->num_data += add_size;
+	}
+#endif
 	CDBG("%s num_bytes %d\n", __func__, data->num_data);
 
 	data->mapdata = kzalloc(data->num_data, GFP_KERNEL);
@@ -345,6 +604,10 @@ static int eeprom_parse_memory_map(struct msm_eeprom_ctrl_t *e_ctrl,
 {
 	int rc =  0, i, j;
 	uint8_t *memptr;
+#if defined (CONFIG_MACH_LENOVO_TB8504)
+	int gc;
+	uint16_t gc_read = 0;
+#endif
 	struct msm_eeprom_mem_map_t *eeprom_map;
 
 	e_ctrl->cal_data.mapdata = NULL;
@@ -424,6 +687,65 @@ static int eeprom_parse_memory_map(struct msm_eeprom_ctrl_t *e_ctrl,
 				memptr += eeprom_map->mem_settings[i].reg_data;
 			}
 			break;
+#if defined (CONFIG_MACH_LENOVO_TB8504)
+			case MSM_CAM_READ_GC5025A: { /*add for gc5025 & gc5025a*/
+				e_ctrl->i2c_client.addr_type = 1;
+				if(1 == eeprom_map->mem_settings[i].reg_data) {
+					e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+ 						&(e_ctrl->i2c_client), 0xd4,
+ 						0x80 | ((eeprom_map->mem_settings[i].reg_addr >> 8) & 0xff),
+						eeprom_map->mem_settings[i].data_type);
+					e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+ 						&(e_ctrl->i2c_client), 0xd5,
+ 						eeprom_map->mem_settings[i].reg_addr & 0xff,
+						eeprom_map->mem_settings[i].data_type);
+					e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+ 						&(e_ctrl->i2c_client), 0xf3, 0x20,
+						eeprom_map->mem_settings[i].data_type);
+					msleep(eeprom_map->mem_settings[i].delay);
+					rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_read(
+						&(e_ctrl->i2c_client), 0xd7, &gc_read,
+						eeprom_map->mem_settings[i].data_type);
+					*memptr = (uint8_t)gc_read;
+					memptr++;
+					pr_err("\r\n tom han MSM_CAM_READ_GC5025A ==1 [%2x]=%2x\n", i, *memptr);
+				}
+				else {
+					e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+ 						&(e_ctrl->i2c_client), 0xd4,
+ 						0x80 | ((eeprom_map->mem_settings[i].reg_addr >> 8) & 0xff),
+						eeprom_map->mem_settings[i].data_type);
+					e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+ 						&(e_ctrl->i2c_client), 0xd5,
+ 						eeprom_map->mem_settings[i].reg_addr & 0xff,
+						eeprom_map->mem_settings[i].data_type);
+					e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+ 						&(e_ctrl->i2c_client), 0xf3, 0x20,
+						eeprom_map->mem_settings[i].data_type);
+					e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+ 						&(e_ctrl->i2c_client), 0xf3, 0x88,
+						eeprom_map->mem_settings[i].data_type);
+					
+					msleep(eeprom_map->mem_settings[i].delay);
+					
+					for(gc = 0; gc < eeprom_map->mem_settings[i].reg_data; gc++) {
+						msleep(eeprom_map->mem_settings[i].delay);
+						rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_read(
+							&(e_ctrl->i2c_client), 0xd7, &gc_read,
+							eeprom_map->mem_settings[i].data_type);
+						if (rc < 0) {
+							pr_err("%s: read failed\n",
+								__func__);
+							goto clean_up;
+						}
+						*memptr = (uint8_t)gc_read;
+						memptr++;
+						pr_err("\r\n tom han MSM_CAM_READ_GC5025A !=1 [%2x]=%2x\n", i, *memptr);
+					}
+				}
+			}
+			break;
+#endif
 			default:
 				pr_err("%s: %d Invalid i2c operation LC:%d\n",
 					__func__, __LINE__, i);
@@ -798,6 +1120,35 @@ static camera_vendor_module_id ov8856_ofilm_get_otp_vendor_module_id(struct msm_
 
 }
 
+/*start: get qtech module id add by tom han*/
+static camera_vendor_module_id ov8856_qtech_get_otp_vendor_module_id(struct msm_eeprom_ctrl_t *e_ctrl)
+{
+	uint8_t MID_FLAG_OFFSET = 0x00;
+	uint8_t MODULE_INFO_OFFSET = MID_FLAG_OFFSET+1;//please reference the otp spec.
+	uint8_t OTP_MODULE_INFO_GROUP_SIZE = (0x710B-0x7011);
+	uint8_t mid=0;
+	uint8_t flag=0;
+	uint8_t *buffer = e_ctrl->cal_data.mapdata;
+	bool rc = false;
+
+	flag = buffer[MID_FLAG_OFFSET];
+
+	
+	if((flag&0xC0) == 0x40){
+		mid = buffer[MODULE_INFO_OFFSET];
+		rc = (mid==MID_QTECH) ? true : false;
+	}else if((flag&0x30) == 0x10){
+		mid = buffer[MODULE_INFO_OFFSET + OTP_MODULE_INFO_GROUP_SIZE];
+		rc = (mid==MID_QTECH) ? true : false;
+	}else
+		rc = false;
+	printk("%s mid=0x%x, flag=0x%x\n", __func__, mid, flag);
+
+	if(rc==false) mid = MID_NULL;
+	return mid;
+
+}
+/*end: get qtech module id add by tom han*/
 
 static camera_vendor_module_id imx219_qtech_get_otp_vendor_module_id(struct msm_eeprom_ctrl_t *e_ctrl)
 {
@@ -924,8 +1275,10 @@ static uint8_t get_otp_vendor_module_id(struct msm_eeprom_ctrl_t *e_ctrl, const 
 	else if((strcmp(eeprom_name,"qtech_imx219_fx219aq") == 0) 
 		|| (strcmp(eeprom_name,"qtech_imx219") == 0)){
 		module_id = 0x06;
-        };
-
+	}
+	else if(strcmp(eeprom_name,"qtech_ov8856") == 0){
+		module_id = ov8856_qtech_get_otp_vendor_module_id(e_ctrl);
+	};  //tom han add 8M Qtech
 	CDBG("%s eeprom_name=%s, module_id=%d\n",__func__,eeprom_name,module_id);
 	if(module_id>=MID_MAX) module_id = MID_NULL;
 

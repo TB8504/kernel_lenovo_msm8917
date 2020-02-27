@@ -1729,8 +1729,13 @@ static long msm_actuator_subdev_do_ioctl(
 			parg = &actuator_data;
 			break;
 		}
+#if !defined(CONFIG_MACH_LENOVO_TB8703) && !defined(CONFIG_MACH_LENOVO_TBX704) && !defined (CONFIG_MACH_LENOVO_TB8704) && !defined (CONFIG_MACH_LENOVO_TB8804)
+		break;
+	case VIDIOC_MSM_ACTUATOR_CFG:
+		pr_err("%s: invalid cmd 0x%x received\n", __func__, cmd);
+		return -EINVAL;
 	}
-
+#endif
 	rc = msm_actuator_subdev_ioctl(sd, cmd, parg);
 
 	switch (cmd) {
