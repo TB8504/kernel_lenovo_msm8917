@@ -830,8 +830,7 @@ static uint32_t get_mi2s_rx_clk_val(int port_id)
 		else
 #endif
 		clk_val = (mi2s_rx_sample_rate * mi2s_rx_bits_per_sample * 2);
-	} else 
-		clk_val = (mi2s_tx_sample_rate * mi2s_tx_bits_per_sample * 2);
+	}
 
 	pr_debug("%s: MI2S Rx bit clock value: 0x%0x\n", __func__, clk_val);
 	return clk_val;
