@@ -200,6 +200,11 @@ dtb-$(CONFIG_ARCH_MSM8937) += msm8937-rumi.dtb \
 	apq8037-pmi8950-mtp.dtb \
 	apq8037-pmi8937-mtp.dtb
 
+
+ifeq ($(CONFIG_MACH_LENOVO_MSM8917),y)
+dtb-$(CONFIG_MACH_LENOVO_TB8504) += \
+        tb8504-msm8917-pmi8937-qrd-sku5.dtb
+else
 dtb-$(CONFIG_ARCH_MSM8917) += msm8917-rumi.dtb \
 	apq8017-pmi8937-cdp.dtb \
 	apq8017-pmi8937-mtp.dtb \
@@ -221,7 +226,7 @@ dtb-$(CONFIG_ARCH_MSM8917) += msm8917-rumi.dtb \
 	apq8017-pmi8937-cdp-wcd-rome.dtb \
 	apq8017-pmi8950-cdp-wcd-rome.dtb \
 	apq8017-no-pmi-wcd-rome-cdp.dtb
-
+endif
 dtb-$(CONFIG_ARCH_MSM8920) += msm8920-pmi8937-cdp.dtb \
 	msm8920-pmi8937-mtp.dtb \
 	msm8920-pmi8950-cdp.dtb \
