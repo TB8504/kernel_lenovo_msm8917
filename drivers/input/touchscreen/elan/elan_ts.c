@@ -1428,7 +1428,7 @@ static int elan_request_input_dev(struct elan_ts_data *ts)
     }
 
     ts->input_dev->evbit[0] = BIT_MASK(EV_SYN) | BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS) ;
-    ts->input_dev->absbit[0] = BIT(ABS_X) | BIT(ABS_Y) | BIT(ABS_PRESSURE);
+    //ts->input_dev->absbit[0] = BIT(ABS_X) | BIT(ABS_Y) | BIT(ABS_PRESSURE);
 #ifdef ELAN_ICS_SLOT_REPORT
     input_mt_init_slots(ts->input_dev, FINGERS_NUM);
 #else
@@ -1443,7 +1443,7 @@ static int elan_request_input_dev(struct elan_ts_data *ts)
     input_set_abs_params(ts->input_dev, ABS_PRESSURE, 0, 255, 0, 0);
     input_set_abs_params(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0, 255, 0, 0);
     input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
-    input_set_abs_params(ts->input_dev, ABS_MT_PRESSURE, 0, 255, 0, 0);  
+    //input_set_abs_params(ts->input_dev, ABS_MT_PRESSURE, 0, 255, 0, 0);  
     input_set_abs_params(ts->input_dev, ABS_MT_TRACKING_ID, 0, 255, 0, 0);
 
     input_set_capability(ts->input_dev, EV_KEY, KEY_POWER);
